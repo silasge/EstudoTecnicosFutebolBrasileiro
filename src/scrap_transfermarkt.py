@@ -7,6 +7,19 @@ from bs4 import BeautifulSoup
 
 
 def retorna_html(url, headers):
+    """
+    Faz uma requisição HTTP para a URL fornecida utilizando os headers especificados e retorna o conteúdo HTML parseado.
+
+    Args:
+        url (str): URL para a qual será feita a requisição.
+        headers (dict): Cabeçalhos HTTP a serem enviados na requisição.
+
+    Returns:
+        BeautifulSoup: Objeto BeautifulSoup contendo o HTML parseado da resposta.
+
+    Raises:
+        HTTPError: Se a resposta da requisição indicar erro (status code >= 400).
+    """
     response = requests.get(url=url, headers=headers)
     response.raise_for_status()
     html = BeautifulSoup(response.content, "html.parser")
@@ -14,6 +27,21 @@ def retorna_html(url, headers):
 
 
 def retorna_tabela_classificacao(html):
+    """
+    Extrai e retorna a tabela de classificação de um documento HTML do Transfermarkt.
+
+    A função busca a tabela de classificação no HTML, processa o cabeçalho e as linhas,
+    incluindo informações extras como classificação (Libertadores, Sul-Americana, Rebaixamento),
+    escudo do clube, link para a temporada, status e título da temporada passada.
+
+    Retorna um DataFrame pandas com os dados estruturados.
+
+    Args:
+        html (bs4.BeautifulSoup): Objeto BeautifulSoup contendo o HTML da página.
+
+    Returns:
+        pandas.DataFrame: DataFrame com a tabela de classificação e informações adicionais dos clubes.
+    """
     tabela = html.find("table", {"class": "items"})
 
     tabela_cabecalho = tabela.find("thead").find_all("th")
@@ -87,7 +115,21 @@ def retorna_tabela_classificacao(html):
     return df
 
 
-def retorn_url_tabela_jogo_a_jogo_completa(base_url, url_time, header):
+def retorna_url_tabela_jogo_a_jogo_completa(base_url, url_time, header):
+    """
+    Recupera a URL completa da tabela de jogos do Campeonato Brasileiro para um time específico no Transfermarkt.
+
+    Esta função constrói a URL da página do time, obtém seu conteúdo HTML e busca o link correspondente à tabela completa de jogos do Campeonato Brasileiro. 
+
+    Retorna a URL completa para essa tabela.
+
+    Args:
+        base_url (str): URL base do site Transfermarkt.
+        url_time (str): Caminho relativo da URL para o time específico.
+        header (dict): Cabeçalhos HTTP para a requisição.
+    Returns:
+        str: URL completa da tabela de jogos do Campeonato Brasileiro para o time.
+    """
     url = base_url + url_time
     response = retorna_html(url=url, headers=header)
     a_tags = response.find_all("a", {"class": "tm-tab"})
@@ -100,7 +142,21 @@ def retorn_url_tabela_jogo_a_jogo_completa(base_url, url_time, header):
     return url_jogo_a_jogo_completa
 
 
-def retorna_tabela_jogo_a_jogo(html):
+def retorna_tabela_jogo_a_jogo(html, id_time):
+    """
+    Extrai e retorna uma tabela de jogos do Brasileirão Série A a partir de um objeto HTML.
+
+    A função busca dentro do HTML fornecido a seção correspondente ao Brasileirão Série A,
+    extrai os cabeçalhos da tabela e as linhas de dados, incluindo informações extras como
+    links para rodada, times, treinador e jogo. 
+    
+    Retorna um DataFrame do pandas contendo todos os dados extraídos.
+    Args:
+        html (BeautifulSoup): Objeto BeautifulSoup representando o HTML da página a ser analisada.
+    Returns:
+        pandas.DataFrame: DataFrame contendo os dados dos jogos, com colunas para cada campo extraído,
+        incluindo links relevantes.
+    """
     boxes = html.find_all("div", {"class": "box"})
     itens_cabecalho = []
     linhas_da_tabela = []
@@ -118,6 +174,7 @@ def retorna_tabela_jogo_a_jogo(html):
             itens_cabecalho.append("HREF_TIME_VISITANTE")
             itens_cabecalho.append("HREF_TREINADOR")
             itens_cabecalho.append("HREF_JOGO")
+            itens_cabecalho.append("ID_TIME")
             
             # Linhas
             tabela_linhas = b.find("tbody").find_all("tr")
@@ -126,14 +183,25 @@ def retorna_tabela_jogo_a_jogo(html):
                 itens_extras = []
                 item_linha = linha.find_all("td")
                 for i in item_linha:
+                    # Não vou precisar dos escudos aqui. Por isso a negativa.
                     if not i.get("class") == ["zentriert", "no-border-rechts"]:
                         if i.text:
                             itens.append(i.text.strip())
+                        # Condição exclusiva para quando não há treinadores preenchidos
+                        # naquela rodada. Nesse caso, o td não tem classe e deixamos a linha
+                        # como nula
+                        elif not i.get("class"):
+                            itens.append(None)
                         
                         if i.find("a"):
                             itens_extras.append(i.find("a").get("href"))
-
-                linhas_da_tabela.append(itens+itens_extras)
+                        # Mesma coisa da condição acima. Quando não tem treinador o td
+                        # não tem classe e deixamos a linha como nula
+                        elif not i.get("class"):
+                            itens_extras.append(None)
+                # [id_time] para identificar de qual time é a tabela que
+                # está sendo carregada
+                linhas_da_tabela.append(itens+itens_extras+[id_time])
 
     df = pd.DataFrame(data=linhas_da_tabela, columns=itens_cabecalho)
     sleep(2)
@@ -154,7 +222,7 @@ if __name__ == "__main__":
     # O id da season no transfermarkt é sempre ano-1. Ou seja, a season com id 2002 é do campeonato
     # brasileiro serie a de 2003. O id 2024 é o de 2025 e assim por diante.
     # Provavelmente foi feito assim para manter o padrão das temporadas europeias que pegam dois anos.
-    seasons = list(range(2020, 2025))
+    seasons = list(range(2003, 2025))
     
     for season_id in seasons:
         print(f"Fazendo scrap da tabela de classificação da temporada {season_id+1}")
@@ -167,10 +235,10 @@ if __name__ == "__main__":
         
         href_times = df_tabela_classificacao["HREF"].to_list()
         for href in href_times:
-            href_time = retorn_url_tabela_jogo_a_jogo_completa(BASE_URL, href, USER_AGENT)
+            href_time = retorna_url_tabela_jogo_a_jogo_completa(BASE_URL, href, USER_AGENT)
             id_time = href_time.split("/verein/")[1].split("/saison_id")[0]
             print(f"Fazendo scrap dos jogos do time {id_time} na temporada {season_id+1}")
             html_tabela_jogo_a_jogo = retorna_html(href_time, headers=USER_AGENT)
-            df_tabela_jogo_a_jogo = retorna_tabela_jogo_a_jogo(html_tabela_jogo_a_jogo)
+            df_tabela_jogo_a_jogo = retorna_tabela_jogo_a_jogo(html_tabela_jogo_a_jogo, id_time)
             df_tabela_jogo_a_jogo.to_csv(caminho_tabela_jogo_a_jogo / f"tabela_jogo_a_jogo_{id_time}_{season_id+1}.csv", index=False)
         print(f"Temporada {season_id+1} concluída")
