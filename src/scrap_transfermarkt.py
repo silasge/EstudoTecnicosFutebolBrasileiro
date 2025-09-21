@@ -222,7 +222,7 @@ if __name__ == "__main__":
     # O id da season no transfermarkt é sempre ano-1. Ou seja, a season com id 2002 é do campeonato
     # brasileiro serie a de 2003. O id 2024 é o de 2025 e assim por diante.
     # Provavelmente foi feito assim para manter o padrão das temporadas europeias que pegam dois anos.
-    seasons = list(range(2003, 2025))
+    seasons = list(range(2002, 2025))
     
     for season_id in seasons:
         print(f"Fazendo scrap da tabela de classificação da temporada {season_id+1}")
@@ -240,5 +240,10 @@ if __name__ == "__main__":
             print(f"Fazendo scrap dos jogos do time {id_time} na temporada {season_id+1}")
             html_tabela_jogo_a_jogo = retorna_html(href_time, headers=USER_AGENT)
             df_tabela_jogo_a_jogo = retorna_tabela_jogo_a_jogo(html_tabela_jogo_a_jogo, id_time)
-            df_tabela_jogo_a_jogo.to_csv(caminho_tabela_jogo_a_jogo / f"tabela_jogo_a_jogo_{id_time}_{season_id+1}.csv", index=False)
+
+            # criando pasta para cada time
+            caminho_tabela_jogo_a_jogo_time = caminho_tabela_jogo_a_jogo / str(id_time)
+            caminho_tabela_jogo_a_jogo_time.mkdir(parents=True, exist_ok=True)
+            # salvando csv da temporada na pasta do time
+            df_tabela_jogo_a_jogo.to_csv(caminho_tabela_jogo_a_jogo_time / f"tabela_jogo_a_jogo_{season_id+1}.csv", index=False)
         print(f"Temporada {season_id+1} concluída")
