@@ -1,0 +1,12 @@
+version: 2
+
+# external sources
+sources:
+  - name: serie_a
+    tables:
+      - name: tabela_classificacao
+        meta:
+          external_location: "read_csv('../dados/serie_a/tabela_classificacao/tabela_classificacao_*.csv', files_to_sniff=-1)"
+      - name: tabela_jogo_a_jogo
+        meta:
+          external_location: "read_csv('../dados/serie_a/tabela_jogo_a_jogo/*/tabela_jogo_a_jogo_*.csv', files_to_sniff=-1)"

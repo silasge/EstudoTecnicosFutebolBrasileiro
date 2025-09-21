@@ -1,1 +1,4 @@
 *.csv
+*.duckdb
+*.wal
+*.log

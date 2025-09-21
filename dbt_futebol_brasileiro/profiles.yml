@@ -1,0 +1,8 @@
+dbt_futebol_brasileiro:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../dados/futebol_brasileiro.duckdb
+      threads: 1
+      schema: futbr

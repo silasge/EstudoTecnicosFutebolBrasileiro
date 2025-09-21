@@ -1,0 +1,22 @@
+SELECT
+    ID_TIME,
+    str_split(str_split(HREF_RODADA, '/saison_id/')[2], '/')[1]::integer + 1 AS ID_TEMPORADA,
+    'BRASILEIRÃO SERIE A' AS NOME_CAMPEONATO,
+    RODADA AS ID_RODADA,
+    str_split(HREF_JOGO, '/spielbericht/')[-1]::integer AS ID_JOGO,
+    nullif(upper(str_split(DATA, ' ')[1]), 'DESCONHECIDO') AS DIA,
+    strptime(str_split(DATA, ' ')[2] || ' ' || nullif("HORÁRIO", 'desconhecido'), '%d/%m/%Y %H:%M') AS DATA_HORA_JOGO,
+    str_split(str_split(HREF_TIME_DA_CASA, '/verein/')[2], '/')[1]::integer AS ID_TIME_CASA,
+	upper(trim(str_split("TIME DA CASA", '(')[1])) AS TIME_CASA,
+    trim(str_split(str_split("TIME DA CASA", '(')[2], '.)')[1])::integer AS POSICAO_TIME_CASA_NA_RODADA,
+    str_split(str_split(HREF_TIME_VISITANTE, '/verein/')[2], '/')[1]::integer AS ID_TIME_VISITANTE,
+	upper(trim(str_split("TIME VISITANTE", '(')[1])) AS TIME_VISITANTE,
+    trim(str_split(str_split("TIME VISITANTE", '(')[2], '.)')[1])::integer AS POSICAO_TIME_VISITANTE_NA_RODADA,
+    nullif(upper("SISTEMA DE JOGO"), '?') AS SISTEMA_DE_JOGO,
+    upper(TREINADORES) AS TREINADOR,
+    str_split(str_split(HREF_TREINADOR, '/trainer/')[2], '/')[1]::integer AS ID_TREINADOR,
+    "PÚBLICO" AS PUBLICO,
+    try_cast(str_split(RESULTADO, ':')[1] AS integer) AS GOLS_TIME_CASA,
+    try_cast(str_split(RESULTADO, ':')[2] AS integer) AS GOLS_TIME_VISITANTE,
+FROM
+    {{ ref("tabela_jogo_a_jogo_serie_a") }}
